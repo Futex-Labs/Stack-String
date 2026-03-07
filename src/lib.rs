@@ -1,10 +1,5 @@
 #![feature(generic_const_exprs)]
 
-use serde::{
-    Deserialize, Serialize,
-    de::{Expected, Visitor},
-};
-
 use std::{
     error::Error,
     fmt::Display,
@@ -178,42 +173,60 @@ impl<const SIZE: usize> Str<SIZE> {
     }
 }
 
-impl<const SIZE: usize> Serialize for Str<SIZE> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        unsafe { Ok(serializer.serialize_str(str::from_utf8_unchecked(&self.0))?) }
+#[cfg(feature = "serde")]
+pub mod serde {
+    use serde::{
+        Deserialize, Serialize,
+        de::{Expected, Visitor},
+    };
+    use crate::{MismatchedLengthDetails, Str};
+
+    impl<const SIZE: usize> Serialize for Str<SIZE> {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            unsafe { Ok(serializer.serialize_str(str::from_utf8_unchecked(&self.0))?) }
+        }
+    }
+
+    impl<'de, const SIZE: usize> Deserialize<'de> for Str<SIZE> {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            deserializer.deserialize_str(StrVisitor)
+        }
+    }
+
+    pub struct StrVisitor<const SIZE: usize>;
+
+    impl<'de, const SIZE: usize> Visitor<'_> for StrVisitor<SIZE> {
+        type Value = Str<SIZE>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            write!(formatter, "A string of length less than or equal to {SIZE}")
+        }
+
+        fn visit_str<E: serde::de::Error>(self, value: &str) -> Result<Self::Value, E> {
+            value.parse().map_err(serde::de::Error::custom)
+        }
+
+        fn visit_bytes<E: serde::de::Error>(self, value: &[u8]) -> Result<Self::Value, E> {
+            Str::<SIZE>::try_from_bytes(&value).map_err(serde::de::Error::custom)
+        }
+    }
+
+    impl Expected for MismatchedLengthDetails {
+        fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            write!(
+                formatter,
+                "String is guaranteed to be {} bytes, read {} bytes.",
+                self.expected_size, self.bytes_read_size
+            )
+        }
     }
 }
-
-impl<'de, const SIZE: usize> Deserialize<'de> for Str<SIZE> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_str(StrVisitor)
-    }
-}
-
-pub struct StrVisitor<const SIZE: usize>;
-
-impl<'de, const SIZE: usize> Visitor<'_> for StrVisitor<SIZE> {
-    type Value = Str<SIZE>;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(formatter, "A string of length less than or equal to {SIZE}")
-    }
-
-    fn visit_str<E: serde::de::Error>(self, value: &str) -> Result<Self::Value, E> {
-        value.parse().map_err(serde::de::Error::custom)
-    }
-
-    fn visit_bytes<E: serde::de::Error>(self, value: &[u8]) -> Result<Self::Value, E> {
-        Str::<SIZE>::try_from_bytes(&value).map_err(serde::de::Error::custom)
-    }
-}
-
 impl<const SIZE: usize> FromStr for Str<SIZE> {
     type Err = StrErr;
 
@@ -250,15 +263,6 @@ pub struct MismatchedLengthDetails {
     expected_size: usize,
 }
 
-impl Expected for MismatchedLengthDetails {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            formatter,
-            "String is guaranteed to be {} bytes, read {} bytes.",
-            self.expected_size, self.bytes_read_size
-        )
-    }
-}
 
 impl Display for StrErr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
