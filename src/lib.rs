@@ -1,6 +1,7 @@
 #![feature(generic_const_exprs)]
+#![no_std]
 
-use std::{
+use core::{
     error::Error,
     fmt::Display,
     ops::Deref,
@@ -106,7 +107,7 @@ impl<const SIZE: usize> Str<SIZE> {
         let mut buf = [0u8; SIZE];
         let inner = unsafe { buf.get_unchecked_mut(..str.len()) };
         inner.copy_from_slice(&str.as_bytes());
-        std::mem::swap(&mut buf, &mut self.0);
+        core::mem::swap(&mut buf, &mut self.0);
         self.1 = str.len();
         Ok(Str(buf, buf.len()))
     }
@@ -118,7 +119,7 @@ impl<const SIZE: usize> Str<SIZE> {
         let mut buf = [0u8; SIZE];
         let inner = unsafe { buf.get_unchecked_mut(..str.len()) };
         inner.copy_from_slice(&str.as_bytes());
-        std::mem::swap(&mut buf, &mut self.0);
+        core::mem::swap(&mut buf, &mut self.0);
         self.1 = str.len();
         Str(buf, buf.len())
     }
@@ -126,7 +127,7 @@ impl<const SIZE: usize> Str<SIZE> {
     /// Takes an existing Str from a stack allocation, leaving Str::<SIZE>::default() behind.
     pub fn take(&mut self) -> Str<SIZE> {
         let mut default = Str::<SIZE>::default();
-        std::mem::swap(&mut default, self);
+        core::mem::swap(&mut default, self);
         default
     }
 
@@ -174,13 +175,12 @@ impl<const SIZE: usize> Str<SIZE> {
 }
 
 #[cfg(feature = "serde")]
-pub mod serde {
+pub mod serde_compatibility {
+    use crate::{MismatchedLengthDetails, Str};
     use serde::{
         Deserialize, Serialize,
         de::{Expected, Visitor},
     };
-    use crate::{MismatchedLengthDetails, Str};
-
     impl<const SIZE: usize> Serialize for Str<SIZE> {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
@@ -204,7 +204,7 @@ pub mod serde {
     impl<'de, const SIZE: usize> Visitor<'_> for StrVisitor<SIZE> {
         type Value = Str<SIZE>;
 
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
             write!(formatter, "A string of length less than or equal to {SIZE}")
         }
 
@@ -218,7 +218,7 @@ pub mod serde {
     }
 
     impl Expected for MismatchedLengthDetails {
-        fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
             write!(
                 formatter,
                 "String is guaranteed to be {} bytes, read {} bytes.",
@@ -263,9 +263,8 @@ pub struct MismatchedLengthDetails {
     expected_size: usize,
 }
 
-
 impl Display for StrErr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             StrErr::MismatchedLength(MismatchedLengthDetails {
                 bytes_read_size,
@@ -285,7 +284,7 @@ impl Display for StrErr {
 impl Error for StrErr {}
 
 impl<const SIZE: usize> Display for Str<SIZE> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
