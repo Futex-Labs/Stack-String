@@ -21,7 +21,7 @@ impl<const SIZE: usize> Default for Str<SIZE> {
 impl<const SIZE: usize> Str<SIZE> {
     /// Our bread and butter: &str to interface with the world.
     pub fn as_str(&self) -> &str {
-        unsafe { str::from_utf8_unchecked(&self.0[..self.1]) }
+        unsafe { str::from_utf8_unchecked(self.0.get_unchecked(..self.1)) }
     }
 
     /// Returns the length of the buffer which the string is stored in.
