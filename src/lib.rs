@@ -1,3 +1,4 @@
+#![allow(incomplete_features)]
 #![feature(generic_const_exprs)]
 #![no_std]
 
@@ -33,16 +34,13 @@ impl<const SIZE: usize> Str<SIZE> {
         self.1
     }
 
+    pub fn is_empty(&self) -> bool {
+       *self == Str::<SIZE>::default()
+    }
+
     /// Creates an iterator over the underlying buffer's string slice
     pub fn chars(&self) -> Chars<'_> {
         self.as_str().chars()
-    }
-
-    /// Selects bytes that are a part of the current string only.
-    /// Choose overwite() instead if the intention is to overwrite the buffer
-    /// with a new string.
-    pub fn as_mut(&mut self) -> &mut str {
-        unsafe { str::from_utf8_unchecked_mut(self.0.get_unchecked_mut(..self.1)) }
     }
 
     /// Creates a new, stack allocated Str from a string slice.
@@ -52,22 +50,26 @@ impl<const SIZE: usize> Str<SIZE> {
         assert!(val.len() <= SIZE);
         let mut buf = [0u8; SIZE];
         let inner = unsafe { buf.get_unchecked_mut(..val.len()) };
-        inner.copy_from_slice(&val.as_bytes());
+        inner.copy_from_slice(val.as_bytes());
         Self(buf, val.len())
     }
 
     /// Creates a new, stack allocated Str from a string slice.
     /// Panics if the size of the string is smaller than the buffer.
+    /// # Safety
+    ///
     /// Undefined behavior if the length of val is greater than the size  
     /// of the Str buffer.
     pub unsafe fn new_unchecked(val: &str) -> Str<SIZE> {
         let mut buf = [0u8; SIZE];
         let inner = unsafe { buf.get_unchecked_mut(..val.len()) };
-        inner.copy_from_slice(&val.as_bytes());
+        inner.copy_from_slice(val.as_bytes());
         Self(buf, val.len())
     }
 
     /// Attempts to create a new Str from a slice of bytes.
+    /// # Safety
+    ///
     /// Undefined Behavior if the bytes are not valid UTF-8.
     pub unsafe fn from_bytes_unchecked(bytes: &[u8]) -> Str<SIZE> {
         let mut buf = [0u8; SIZE];
@@ -87,7 +89,7 @@ impl<const SIZE: usize> Str<SIZE> {
                 expected_size: SIZE,
             }))?
         }
-        str::from_utf8(&bytes).map_err(|e| StrErr::Utf8Error(e))?;
+        str::from_utf8(bytes).map_err(StrErr::Utf8Error)?;
         let mut buf = [0u8; SIZE];
         let inner = unsafe { buf.get_unchecked_mut(..bytes.len()) };
         inner.copy_from_slice(bytes);
@@ -106,7 +108,7 @@ impl<const SIZE: usize> Str<SIZE> {
         }
         let mut buf = [0u8; SIZE];
         let inner = unsafe { buf.get_unchecked_mut(..str.len()) };
-        inner.copy_from_slice(&str.as_bytes());
+        inner.copy_from_slice(str.as_bytes());
         core::mem::swap(&mut buf, &mut self.0);
         self.1 = str.len();
         Ok(Str(buf, buf.len()))
@@ -118,7 +120,7 @@ impl<const SIZE: usize> Str<SIZE> {
         assert!(str.len() <= SIZE);
         let mut buf = [0u8; SIZE];
         let inner = unsafe { buf.get_unchecked_mut(..str.len()) };
-        inner.copy_from_slice(&str.as_bytes());
+        inner.copy_from_slice(str.as_bytes());
         core::mem::swap(&mut buf, &mut self.0);
         self.1 = str.len();
         Str(buf, buf.len())
@@ -142,7 +144,7 @@ impl<const SIZE: usize> Str<SIZE> {
     /// Example: overwriting b"larger_amount_of_data" with b"smol_data" would result in b"smol_dataount_of_data"
     pub fn write(&mut self, str: &Str<SIZE>) {
         self.1 = str.len();
-        self.0.copy_from_slice(&str.as_bytes());
+        self.0.copy_from_slice(str.as_bytes());
     }
 
     /// Attempt to append the contents of a &str to an existing Str buffer.
@@ -152,7 +154,7 @@ impl<const SIZE: usize> Str<SIZE> {
             Err(StrErr::InsufficientSpace)?
         }
         let buf = unsafe { self.0.get_unchecked_mut(self.1..self.1 + bytes.len()) };
-        buf.copy_from_slice(&bytes.as_bytes());
+        buf.copy_from_slice(bytes.as_bytes());
         self.1 += bytes.len();
         Ok(())
     }
@@ -171,6 +173,12 @@ impl<const SIZE: usize> Str<SIZE> {
         left.copy_from_slice(s1);
         right.copy_from_slice(s2);
         Str(buf, self.1 + other.1)
+    }
+}
+
+impl<const SIZE: usize> AsMut<str> for Str<SIZE> {
+    fn as_mut(&mut self) -> &mut str {
+        unsafe { str::from_utf8_unchecked_mut(self.0.get_unchecked_mut(..self.1)) }
     }
 }
 
@@ -239,7 +247,7 @@ impl<const SIZE: usize> FromStr for Str<SIZE> {
         }
         let mut buf = [0u8; SIZE];
         let inner = &mut buf[..s.len()];
-        inner.copy_from_slice(&s.as_bytes());
+        inner.copy_from_slice(s.as_bytes());
         Ok(Self(buf, s.len()))
     }
 }
@@ -293,7 +301,7 @@ impl<const SIZE: usize> TryFrom<&str> for Str<SIZE> {
     type Error = StrErr;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Ok(<Str<SIZE> as FromStr>::from_str(&value)?)
+        <Str<SIZE> as FromStr>::from_str(value)
     }
 }
 
@@ -307,7 +315,7 @@ impl<const SIZE: usize> Deref for Str<SIZE> {
 
 impl<const SIZE: usize> AsRef<str> for Str<SIZE> {
     fn as_ref(&self) -> &str {
-        &*self
+        self
     }
 }
 
