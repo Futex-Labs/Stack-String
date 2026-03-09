@@ -2,6 +2,11 @@
 name = "sstr"
 version = "0.1.0"
 edition = "2024"
+description = "A stack allocated String type that maximally emulates dynamic behaviors. Relies on generic const expressions for concatenating stack allocated strings."
+authors = ["Futex Labs <opensource@futexlabs.io>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/Futex-Labs/Stack-String"
 
 [dependencies]
 serde = { version = "1.0.228", optional = true, default-features = false, features = ["derive"] }

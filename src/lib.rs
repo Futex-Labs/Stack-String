@@ -2,6 +2,42 @@
 #![feature(generic_const_exprs)]
 #![no_std]
 
+//!# Sstr: a stack allocated utf-8 string
+//! Str derives traits such as Display, DeRef<target = str>, TryFrom<&str>, TryFrom<&[u8]>, & Eq.
+//! This implementation avoids the usage of null terminators like in C's strings.
+//! Instead, an extra usize is stored along with the byte array storing the underlying bytes.
+//! It is responsible for tracking the size of the string's bytes inside the buffer.
+//! Users must specify the size of the buffer responsible for storing Str's bytes. 
+//! Strs of different sizes aren't considered to be the same type!
+//!
+//! # Example Usage
+//!
+//! ``` rust 
+//!     
+//! use sstr::Str;
+//!
+//! let my_string: Str<12> = Str::new("Hello World!");
+//! let string: &str = "Hello World!";
+//! assert_eq!(&*my_string, string);
+//!
+//! let str0: Str<8> = Str::new("hello");
+//! let str1: Str<16> = Str::new(" world!");
+//! let new = str0.concat_str(&str1);
+//! assert_eq!(*new, *"hello world!");
+//! assert_eq!(new.buffer_size(), 24);
+//!
+//! let mut str: Str<4> = Str::new("top");
+//! let str1: Str<4> = Str::new("kek");
+//! str.overwrite(&str1);
+//! assert_eq!(str, str1);
+//!
+//! let mut str: Str<10> = Str::new("bottom");
+//! let str1: Str<4> = Str::new(" kek");
+//! str.try_append_str(&str1).expect("buffer too small");
+//! assert_eq!(str, Str::new("bottom kek"))
+//!
+//! ```
+
 use core::{
     error::Error,
     fmt::Display,
@@ -126,7 +162,7 @@ impl<const SIZE: usize> Str<SIZE> {
         Str(buf, buf.len())
     }
 
-    /// Takes an existing Str from a stack allocation, leaving Str::<SIZE>::default() behind.
+    /// Takes an existing Str from a stack allocation, leaving Str::default() behind.
     pub fn take(&mut self) -> Str<SIZE> {
         let mut default = Str::<SIZE>::default();
         core::mem::swap(&mut default, self);
@@ -179,6 +215,14 @@ impl<const SIZE: usize> Str<SIZE> {
 impl<const SIZE: usize> AsMut<str> for Str<SIZE> {
     fn as_mut(&mut self) -> &mut str {
         unsafe { str::from_utf8_unchecked_mut(self.0.get_unchecked_mut(..self.1)) }
+    }
+}
+
+impl<const SIZE: usize> TryFrom<&[u8]> for Str<SIZE> {
+    type Error = StrErr;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        Str::try_from_bytes(&value)
     }
 }
 
