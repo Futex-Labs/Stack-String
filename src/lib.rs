@@ -40,14 +40,20 @@
 
 use core::{
     error::Error,
-    fmt::Display,
+    fmt::{Debug, Display},
     hash::Hash,
     ops::Deref,
     str::{Chars, FromStr, Utf8Error},
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Str<const SIZE: usize>([u8; SIZE], usize);
+
+impl<const SIZE: usize> Debug for Str<SIZE> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_tuple(self.as_str()).finish()
+    }
+}
 
 impl<const SIZE: usize> Hash for Str<SIZE> {
     fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
