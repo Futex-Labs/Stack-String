@@ -290,7 +290,7 @@ impl<const SIZE: usize> FromStr for Str<SIZE> {
     type Err = StrErr;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.len() <= SIZE {
+        if s.len() > SIZE {
             Err(StrErr::MismatchedLength(MismatchedLengthDetails {
                 bytes_read_size: s.len(),
                 expected_size: SIZE,
