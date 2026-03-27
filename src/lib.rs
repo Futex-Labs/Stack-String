@@ -251,7 +251,7 @@ pub mod serde_compatibility {
         where
             S: serde::Serializer,
         {
-            unsafe { Ok(serializer.serialize_str(str::from_utf8_unchecked(&self.0))?) }
+            Ok(serializer.serialize_str(self.as_str())?)
         }
     }
 
