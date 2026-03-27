@@ -7,12 +7,12 @@
 //! This implementation avoids the usage of null terminators like in C's strings.
 //! Instead, an extra usize is stored along with the byte array storing the underlying bytes.
 //! It is responsible for tracking the size of the string's bytes inside the buffer.
-//! Users must specify the size of the buffer responsible for storing Str's bytes. 
+//! Users must specify the size of the buffer responsible for storing Str's bytes.
 //! Strs of different sizes aren't considered to be the same type!
 //!
 //! # Example Usage
 //!
-//! ``` rust 
+//! ``` rust
 //!     
 //! use sstr::Str;
 //!
@@ -41,12 +41,19 @@
 use core::{
     error::Error,
     fmt::Display,
+    hash::Hash,
     ops::Deref,
     str::{Chars, FromStr, Utf8Error},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Str<const SIZE: usize>([u8; SIZE], usize);
+
+impl<const SIZE: usize> Hash for Str<SIZE> {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        unsafe { self.0.get_unchecked(..self.1).hash(state) }
+    }
+}
 
 impl<const SIZE: usize> Default for Str<SIZE> {
     fn default() -> Self {
@@ -70,8 +77,8 @@ impl<const SIZE: usize> Str<SIZE> {
         self.1
     }
 
-    pub fn is_empty(&self) -> bool {
-       *self == Str::<SIZE>::default()
+    pub const fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     /// Creates an iterator over the underlying buffer's string slice
@@ -222,7 +229,7 @@ impl<const SIZE: usize> TryFrom<&[u8]> for Str<SIZE> {
     type Error = StrErr;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        Str::try_from_bytes(&value)
+        Str::try_from_bytes(value)
     }
 }
 
