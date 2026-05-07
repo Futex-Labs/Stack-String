@@ -38,7 +38,13 @@
 //! let mut str: Str<10> = Str::new("bottom");
 //! let str1: Str<4> = Str::new(" kek");
 //! str.try_append_str(&str1).expect("buffer too small");
-//! assert_eq!(str, Str::new("bottom kek"))
+//! assert_eq!(str, Str::new("bottom kek"));
+//!
+//! let mut str: Str<2> = Str::empty();
+//! str.try_push('h').expect("buffer too small");
+//! str.try_push('i').expect("buffer too small");
+//! assert_eq!(str.as_str(), "hi");
+//!
 //! ```
 
 use core::{
