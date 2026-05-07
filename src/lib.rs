@@ -1,6 +1,5 @@
-#![feature(doc_cfg)]
 #![allow(incomplete_features)]
-#![cfg_attr(feature = "nightly", feature(generic_const_exprs))]
+#![cfg_attr(feature = "nightly", feature(generic_const_exprs, doc_cfg))]
 #![no_std]
 
 //!# Sstr: a stack allocated utf-8 string
