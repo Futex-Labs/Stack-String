@@ -8,6 +8,9 @@ license = "MIT"
 readme = "README.md"
 repository = "https://github.com/Futex-Labs/Stack-String"
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 serde = { version = "1.0.228", optional = true, default-features = false, features = ["derive"] }
 sqlx = { version = "0.8.6", optional = true, default-features = false }

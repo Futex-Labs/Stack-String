@@ -13,7 +13,7 @@
 //!
 //! # Example Usage
 //!
-//! ``` rust
+//! ```rust
 //!     
 //! use sstr::Str;
 //!
@@ -197,6 +197,17 @@ impl<const SIZE: usize> Str<SIZE> {
     pub fn write(&mut self, str: &Str<SIZE>) {
         self.1 = str.len();
         self.0.copy_from_slice(str.as_bytes());
+    }
+
+    pub fn try_push(&mut self, char: char) -> Result<(), StrErr> {
+        if SIZE == self.1 {
+            Err(StrErr::InsufficientSpace)?
+        }
+        unsafe {
+            *self.0.get_unchecked_mut(self.1) = char as u8;
+        }
+        self.1 += 1;
+        Ok(())
     }
 
     /// Attempt to append the contents of a &str to an existing Str buffer.
@@ -463,9 +474,7 @@ pub mod test {
 
         let pool = SqlitePool::connect_with(options).await.unwrap();
 
-        sqlx::raw_sql(
-            "CREATE TABLE IF NOT EXISTS testing(random TEXT NOT NULL PRIMARY KEY)"
-        )
+        sqlx::raw_sql("CREATE TABLE IF NOT EXISTS testing(random TEXT NOT NULL PRIMARY KEY)")
             .execute(&pool)
             .await
             .unwrap();
@@ -531,4 +540,24 @@ pub mod test {
         let str1: Str<4> = Str::new("me");
         str.write_exact(&str1);
     }
+
+    #[test]
+    fn try_push() {
+        let mut str: Str<3> = Str::empty();
+        str.try_push('a').unwrap();
+        str.try_push('b').unwrap();
+        str.try_push('c').unwrap();
+        assert_eq!(str.as_str(), "abc");
+        assert_eq!(str.as_str(), "abc");
+    }
+
+    #[test]
+    #[should_panic]
+    fn try_push_panic() {
+        let mut str: Str<2> = Str::empty();
+        str.try_push('a').unwrap();
+        str.try_push('b').unwrap();
+        str.try_push('c').unwrap();
+    }
+
 }
