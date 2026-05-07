@@ -1,6 +1,6 @@
 [package]
 name = "sstr"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 description = "An ergonomic stack allocated String."
 authors = ["Futex Labs <opensource@futexlabs.io>"]

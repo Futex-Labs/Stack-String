@@ -210,6 +210,13 @@ impl<const SIZE: usize> Str<SIZE> {
         Ok(())
     }
 
+    pub unsafe fn push_unchecked(&mut self, char: char) {
+        unsafe {
+            *self.0.get_unchecked_mut(self.1) = char as u8;
+        }
+        self.1 += 1;
+    }
+
     /// Attempt to append the contents of a &str to an existing Str buffer.
     /// Errors out if there is insufficient room in the buffer (instead of truncating).
     pub fn try_append_str(&mut self, bytes: &str) -> Result<(), StrErr> {
@@ -464,6 +471,7 @@ pub mod test {
     }
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     #[cfg(feature = "sqlx-sqlite")]
     async fn sqlx_sqlite() {
         use sqlx::{SqlitePool, sqlite::SqliteConnectOptions};
@@ -548,7 +556,6 @@ pub mod test {
         str.try_push('b').unwrap();
         str.try_push('c').unwrap();
         assert_eq!(str.as_str(), "abc");
-        assert_eq!(str.as_str(), "abc");
     }
 
     #[test]
@@ -560,4 +567,14 @@ pub mod test {
         str.try_push('c').unwrap();
     }
 
+    #[test]
+    fn push_unchecked() {
+        let mut str: Str<3> = Str::empty();
+        unsafe {
+            str.push_unchecked('a');
+            str.push_unchecked('b');
+            str.push_unchecked('c');
+        }
+        assert_eq!(str.as_str(), "abc");
+    }
 }
