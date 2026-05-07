@@ -243,9 +243,13 @@ impl<const SIZE: usize> TryFrom<&[u8]> for Str<SIZE> {
     }
 }
 
-#[cfg(any(feature = "sqlx-postgres", feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
-mod sqlx {
-    use crate::{Str, FromStr};
+#[cfg(any(
+    feature = "sqlx-postgres",
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite"
+))]
+mod sqlx_integration {
+    use crate::{FromStr, Str};
     use sqlx::{Database, Decode, Encode, Type};
 
     macro_rules! db_type {
@@ -280,19 +284,19 @@ mod sqlx {
     }
 
     #[cfg(feature = "sqlx-mysql")]
-    mod mysql {
+    mod sqlx_mysql {
         use super::*;
         use sqlx::MySql;
         db_type! { MySql }
     }
     #[cfg(feature = "sqlx-postgres")]
-    mod postgres {
+    mod sqlx_postgres {
         use super::*;
         use sqlx::Postgres;
         db_type! { Postgres }
     }
     #[cfg(feature = "sqlx-sqlite")]
-    mod sqlite {
+    mod sqlx_sqlite {
         use super::*;
         use sqlx::Sqlite;
         db_type! { Sqlite }
@@ -300,7 +304,7 @@ mod sqlx {
 }
 
 #[cfg(feature = "serde")]
-mod serde {
+mod serde_integration {
     use crate::{MismatchedLengthDetails, Str};
     use serde::{
         Deserialize, Serialize,
@@ -352,6 +356,7 @@ mod serde {
         }
     }
 }
+
 impl<const SIZE: usize> FromStr for Str<SIZE> {
     type Err = StrErr;
 
@@ -445,6 +450,36 @@ pub mod test {
         let str: Str<12> = Str::new("hello world!");
         let string = "hello world!";
         assert_eq!(&*str, string);
+    }
+
+    #[tokio::test]
+    #[cfg(feature = "sqlx-sqlite")]
+    async fn sqlx_sqlite() {
+        use sqlx::{SqlitePool, sqlite::SqliteConnectOptions};
+
+        let options = SqliteConnectOptions::new()
+            .filename("./test_db")
+            .create_if_missing(true);
+
+        let pool = SqlitePool::connect_with(options).await.unwrap();
+
+        sqlx::raw_sql(
+            "CREATE TABLE IF NOT EXISTS testing(random TEXT NOT NULL PRIMARY KEY)"
+        )
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let _ = sqlx::query("INSERT INTO testing (random) VALUES ($1)")
+            .bind("suh dude")
+            .execute(&pool)
+            .await;
+
+        let row: (Str<32>,) = sqlx::query_as("SELECT random FROM testing")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(row.0, Str::<32>::new("suh dude"));
     }
 
     #[test]

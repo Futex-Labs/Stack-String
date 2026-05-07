@@ -12,8 +12,12 @@ repository = "https://github.com/Futex-Labs/Stack-String"
 serde = { version = "1.0.228", optional = true, default-features = false, features = ["derive"] }
 sqlx = { version = "0.8.6", optional = true, default-features = false }
 
+[dev-dependencies]
+tokio = { version = "1.52", features = ["macros"] }
+tokio-test = "0.4.5"
+
 [features]
 nightly = []
-sqlx-postgres = ["sqlx/postgres"]
-sqlx-mysql = ["sqlx/mysql"]
-sqlx-sqlite = ["sqlx/sqlite"]
+sqlx-postgres = ["sqlx/postgres", "sqlx/runtime-tokio"]
+sqlx-mysql = ["sqlx/mysql", "sqlx/runtime-tokio"]
+sqlx-sqlite = ["sqlx/sqlite", "sqlx/runtime-tokio"]
