@@ -205,6 +205,8 @@ impl<const SIZE: usize> Str<SIZE> {
         self.0.copy_from_slice(str.as_bytes());
     }
 
+    /// Push a char onto the inner buffer of Str. Returns a result in case
+    /// there is no room left in the buffer.
     pub fn try_push(&mut self, char: char) -> Result<(), StrErr> {
         if SIZE == self.1 {
             Err(StrErr::InsufficientSpace)?
@@ -216,6 +218,12 @@ impl<const SIZE: usize> Str<SIZE> {
         Ok(())
     }
 
+    /// Push a char onto the inner buffer of Str. 
+    ///
+    /// # SAFETY
+    ///
+    /// This fuction will exhibit undefined behavior if there is no room
+    /// left in the buffer when called.
     pub unsafe fn push_unchecked(&mut self, char: char) {
         unsafe {
             *self.0.get_unchecked_mut(self.1) = char as u8;
