@@ -16,7 +16,7 @@ cargo add sstr
 or add the following line to your Cargo.toml
 
 ```toml
-sstr = "0.2.0"
+sstr = "0.3.0"
 ```
 
 # Flags
@@ -29,7 +29,7 @@ Stack String integrates with serde for serialization and serialization in variou
 The serde dependency is optional, therefore, you must add `serde` as a feature to the sstr crate in your cargo.toml.
 
 ```toml
-sstr = { version = "0.2.0", features = ["serde"] }
+sstr = { version = "0.3.0", features = ["serde"] }
 ```
 
 ## SQLx
@@ -39,16 +39,16 @@ Stack String implements `sqlx::Encode`, `sqlx::Decode`, and `sqlx::Type` for all
 ### Postgres
 
 ```toml
-sstr = { version = "0.2.0", features = ["sqlx-postgres"] }
+sstr = { version = "0.3.0", features = ["sqlx-postgres"] }
 ```
 
 ### Sqlite
 
 ```toml
-sstr = { version = "0.2.0", features = ["sqlx-sqlite"] }
+sstr = { version = "0.3.0", features = ["sqlx-sqlite"] }
 ```
 ### MySQL
 
 ```toml
-sstr = { version = "0.2.0", features = ["sqlx-mysql"] }
+sstr = { version = "0.3.0", features = ["sqlx-mysql"] }
 ```
