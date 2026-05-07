@@ -1,6 +1,6 @@
 [package]
 name = "sstr"
-version = "0.1.4"
+version = "0.2.0"
 edition = "2024"
 description = "A stack allocated String type that maximally emulates dynamic behaviors. Relies on generic const expressions for concatenating stack allocated strings."
 authors = ["Futex Labs <opensource@futexlabs.io>"]
@@ -10,3 +10,10 @@ repository = "https://github.com/Futex-Labs/Stack-String"
 
 [dependencies]
 serde = { version = "1.0.228", optional = true, default-features = false, features = ["derive"] }
+sqlx = { version = "0.8.6", optional = true, default-features = false }
+
+[features]
+nightly = []
+sqlx-postgres = ["sqlx/postgres"]
+sqlx-mysql = ["sqlx/mysql"]
+sqlx-sqlite = ["sqlx/sqlite"]

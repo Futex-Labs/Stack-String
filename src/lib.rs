@@ -1,9 +1,10 @@
+#![feature(doc_cfg)]
 #![allow(incomplete_features)]
-#![feature(generic_const_exprs)]
+#![cfg_attr(feature = "nightly", feature(generic_const_exprs))]
 #![no_std]
 
 //!# Sstr: a stack allocated utf-8 string
-//! Str derives traits such as Display, DeRef<target = str>, TryFrom<&str>, TryFrom<&[u8]>, & Eq.
+//! Str derives traits such as Display, DeRef<target = str>, TryFrom<&str>, TryFrom<&[[u8]]>, & Eq.
 //! This implementation avoids the usage of null terminators like in C's strings.
 //! Instead, an extra usize is stored along with the byte array storing the underlying bytes.
 //! It is responsible for tracking the size of the string's bytes inside the buffer.
@@ -20,11 +21,14 @@
 //! let string: &str = "Hello World!";
 //! assert_eq!(&*my_string, string);
 //!
-//! let str0: Str<8> = Str::new("hello");
-//! let str1: Str<16> = Str::new(" world!");
-//! let new = str0.concat_str(&str1);
-//! assert_eq!(*new, *"hello world!");
-//! assert_eq!(new.buffer_size(), 24);
+//! #[cfg(feature = "nightly")]
+//! {
+//!     let str0: Str<8> = Str::new("hello");
+//!     let str1: Str<16> = Str::new(" world!");
+//!     let new = str0.concat_str(&str1);
+//!     assert_eq!(*new, *"hello world!");
+//!     assert_eq!(new.buffer_size(), 24);
+//! }
 //!
 //! let mut str: Str<4> = Str::new("top");
 //! let str1: Str<4> = Str::new("kek");
@@ -35,7 +39,6 @@
 //! let str1: Str<4> = Str::new(" kek");
 //! str.try_append_str(&str1).expect("buffer too small");
 //! assert_eq!(str, Str::new("bottom kek"))
-//!
 //! ```
 
 use core::{
@@ -210,6 +213,7 @@ impl<const SIZE: usize> Str<SIZE> {
 
     /// Allocates a new Str buffer on the stack where the alloc size is equal to the sum of both Str stack alloc sizes.
     /// This function ignores unused bytes in the buffer.
+    #[cfg(feature = "nightly")]
     pub fn concat_str<const OTHER_SIZE: usize>(
         &self,
         other: &Str<OTHER_SIZE>,
@@ -239,8 +243,64 @@ impl<const SIZE: usize> TryFrom<&[u8]> for Str<SIZE> {
     }
 }
 
+#[cfg(any(feature = "sqlx-postgres", feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
+mod sqlx {
+    use crate::{Str, FromStr};
+    use sqlx::{Database, Decode, Encode, Type};
+
+    macro_rules! db_type {
+        ($($t:ty),+) => {
+           $(
+                impl<const SIZE: usize> Type<$t> for Str<SIZE> {
+                    fn type_info() -> <$t as Database>::TypeInfo {
+                        <str as Type<$t>>::type_info()
+                    }
+                }
+
+                impl<'q, const SIZE: usize> Encode<'q, $t> for Str<SIZE>
+                where
+                    for<'a> &'a str: Encode<'q, $t>,
+                {
+                    fn encode_by_ref(
+                        &self,
+                        buf: &mut <$t as Database>::ArgumentBuffer<'q>,
+                    ) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+                        <&str as Encode<$t>>::encode(self.as_str(), buf)
+                    }
+                }
+
+                impl <'q, const SIZE: usize> Decode<'q, $t> for Str<SIZE> {
+                    fn decode(value: <$t as Database>::ValueRef<'q>) -> Result<Self, sqlx::error::BoxDynError> {
+                        let decoded: &str = <&str as Decode<'q, $t>>::decode(value)?;
+                        Ok(Str::<SIZE>::from_str(decoded)?)
+                    }
+                }
+           )+
+        };
+    }
+
+    #[cfg(feature = "sqlx-mysql")]
+    mod mysql {
+        use super::*;
+        use sqlx::MySql;
+        db_type! { MySql }
+    }
+    #[cfg(feature = "sqlx-postgres")]
+    mod postgres {
+        use super::*;
+        use sqlx::Postgres;
+        db_type! { Postgres }
+    }
+    #[cfg(feature = "sqlx-sqlite")]
+    mod sqlite {
+        use super::*;
+        use sqlx::Sqlite;
+        db_type! { Sqlite }
+    }
+}
+
 #[cfg(feature = "serde")]
-pub mod serde_compatibility {
+mod serde {
     use crate::{MismatchedLengthDetails, Str};
     use serde::{
         Deserialize, Serialize,
@@ -251,7 +311,7 @@ pub mod serde_compatibility {
         where
             S: serde::Serializer,
         {
-            Ok(serializer.serialize_str(self.as_str())?)
+            serializer.serialize_str(self.as_str())
         }
     }
 
@@ -266,7 +326,7 @@ pub mod serde_compatibility {
 
     pub struct StrVisitor<const SIZE: usize>;
 
-    impl<'de, const SIZE: usize> Visitor<'_> for StrVisitor<SIZE> {
+    impl<const SIZE: usize> Visitor<'_> for StrVisitor<SIZE> {
         type Value = Str<SIZE>;
 
         fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
@@ -278,7 +338,7 @@ pub mod serde_compatibility {
         }
 
         fn visit_bytes<E: serde::de::Error>(self, value: &[u8]) -> Result<Self::Value, E> {
-            Str::<SIZE>::try_from_bytes(&value).map_err(serde::de::Error::custom)
+            Str::<SIZE>::try_from_bytes(value).map_err(serde::de::Error::custom)
         }
     }
 
@@ -388,6 +448,7 @@ pub mod test {
     }
 
     #[test]
+    #[cfg(feature = "nightly")]
     fn concat_str() {
         let str0: Str<8> = Str::new("hello");
         let str1: Str<16> = Str::new(" world!");
