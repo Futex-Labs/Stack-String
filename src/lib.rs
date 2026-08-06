@@ -217,7 +217,7 @@ impl<const SIZE: usize> Str<SIZE> {
         Ok(())
     }
 
-    /// Push a char onto the inner buffer of Str. 
+    /// Push a char onto the inner buffer of Str.
     ///
     /// # SAFETY
     ///
@@ -298,7 +298,7 @@ mod sqlx_integration {
                 {
                     fn encode_by_ref(
                         &self,
-                        buf: &mut <$t as Database>::ArgumentBuffer<'q>,
+                        buf: &mut <$t as Database>::ArgumentBuffer,
                     ) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
                         <&str as Encode<$t>>::encode(self.as_str(), buf)
                     }
@@ -320,12 +320,14 @@ mod sqlx_integration {
         use sqlx::MySql;
         db_type! { MySql }
     }
+
     #[cfg(feature = "sqlx-postgres")]
     mod sqlx_postgres {
         use super::*;
         use sqlx::Postgres;
         db_type! { Postgres }
     }
+
     #[cfg(feature = "sqlx-sqlite")]
     mod sqlx_sqlite {
         use super::*;
